@@ -16,17 +16,26 @@ declare global {
   }
 }
 
-const plans = [
-  { name: "ماهانه", duration: "۳۰ روز", price: "—", note: "برای شروع عضویت", featured: false },
-  { name: "سه‌ماهه", duration: "۹۰ روز", price: "—", note: "انتخاب متعادل", featured: true },
-  { name: "شش‌ماهه", duration: "۱۸۰ روز", price: "—", note: "ارزش بیشتر در بلندمدت", featured: false },
-  { name: "سالانه", duration: "۳۶۵ روز", price: "—", note: "دسترسی یک‌ساله", featured: false },
-];
+type Plan = { id: string; title: string; duration_days: number; price_minor: number; currency: string };
+const planNotes = ["برای شروع عضویت", "انتخاب متعادل", "ارزش بیشتر در بلندمدت", "دسترسی بلندمدت"];
 
 export default function Home() {
   const [telegramName, setTelegramName] = useState("");
   const [telegramState, setTelegramState] = useState<"checking" | "connected" | "browser">("checking");
   const [notice, setNotice] = useState("");
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/plans", { cache: "no-store" })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "بارگذاری پلن‌ها ناموفق بود");
+        setPlans(Array.isArray(data.plans) ? data.plans : []);
+      })
+      .catch(() => setNotice("فعلاً امکان دریافت قیمت پلن‌ها وجود ندارد. لطفاً بعداً دوباره تلاش کن."))
+      .finally(() => setPlansLoading(false));
+  }, []);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -61,7 +70,7 @@ export default function Home() {
   }, []);
 
   function selectPlan(name: string) {
-    setNotice(`پلن «${name}» انتخاب شد. برای فعال‌سازی، درگاه پرداخت باید پیکربندی شود.`);
+    setNotice(`پلن «${name}» انتخاب شد. مرحله پرداخت در حال آماده‌سازی است.`);
   }
 
   return (
@@ -118,18 +127,23 @@ export default function Home() {
           <p>پلن مناسب خود را انتخاب کنید.<br />تمام پلن‌ها دسترسی کامل در مدت اعتبار را فراهم می‌کنند.</p>
         </div>
         <div className="plan-grid">
-          {plans.map((plan, index) => (
-            <article className={`plan-card ${plan.featured ? "featured" : ""}`} key={plan.name}>
-              {plan.featured && <div className="popular">پیشنهاد ویژه</div>}
-              <div className="plan-index">0{index + 1}</div>
-              <h3>{plan.name}</h3>
-              <div className="plan-duration">{plan.duration} دسترسی</div>
-              <div className="plan-price">{plan.price}<small>قیمت پس از تنظیم درگاه</small></div>
-              <div className="plan-rule" />
-              <p>{plan.note}</p>
-              <button className={plan.featured ? "plan-button gold" : "plan-button"} onClick={() => selectPlan(plan.name)}>انتخاب این پلن <span>←</span></button>
-            </article>
-          ))}
+          {plansLoading ? <p className="membership-note">در حال دریافت قیمت پلن‌ها…</p> : plans.length === 0 ? <p className="membership-note">در حال حاضر پلن فعالی برای نمایش وجود ندارد.</p> : plans.map((plan, index) => {
+            const name = plan.title;
+            const featured = index === 1;
+            const price = (Number(plan.price_minor) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return (
+              <article className={`plan-card ${featured ? "featured" : ""}`} key={plan.id}>
+                {featured && <div className="popular">پیشنهاد ویژه</div>}
+                <div className="plan-index">0{index + 1}</div>
+                <h3>{name}</h3>
+                <div className="plan-duration">{Number(plan.duration_days).toLocaleString("fa-IR")} روز دسترسی</div>
+                <div className="plan-price">${price}<small>USD</small></div>
+                <div className="plan-rule" />
+                <p>{planNotes[index] || "دسترسی ویژه اعضا"}</p>
+                <button className={featured ? "plan-button gold" : "plan-button"} onClick={() => selectPlan(name)}>انتخاب این پلن <span>←</span></button>
+              </article>
+            );
+          })}
         </div>
         <div className="membership-note"><span>✦</span> محتوای کامل فقط برای اعضای دارای اشتراک فعال قابل دسترسی خواهد بود.</div>
       </section>
