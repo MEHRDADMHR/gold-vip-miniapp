@@ -3,9 +3,9 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GOLDEN | تجربه ویژه",
-  description: "فضای عضویت ویژه با طراحی لوکس و دسترسی امن",
-  applicationName: "GOLDEN",
+  title: "لوتی پریمیوم | عضویت ویژه",
+  description: "لوتی پریمیوم؛ فضای عضویت ویژه با طراحی لوکس و دسترسی امن",
+  applicationName: "لوتی پریمیوم",
   robots: { index: false, follow: false },
 };
 
