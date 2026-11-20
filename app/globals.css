@@ -140,3 +140,20 @@ h1 em,h2 em{font-style:normal;color:var(--gold-light)}
 .admin-text-action{background:none;border:0;color:#e4c77f;cursor:pointer;padding:5px 8px;font:inherit;font-size:10px}.admin-text-action.danger{color:#e18d7f}
 .admin-hint{color:#898173;font-size:10px;line-height:1.9;margin:12px 0 0}.admin-notice{background:#17251b;border:1px solid #426b4b;color:#b9e0c0;padding:12px;margin-bottom:16px;font-size:12px}
 @media(max-width:700px){.admin-form{grid-template-columns:1fr}}
+
+
+/* Payment checkout */
+.payment-backdrop{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.82);backdrop-filter:blur(7px);display:grid;place-items:center;padding:18px}
+.payment-modal{position:relative;width:min(520px,100%);max-height:90vh;overflow:auto;background:linear-gradient(145deg,#1b1913,#0c0c0b);border:1px solid rgba(201,164,91,.5);padding:30px;box-shadow:0 25px 90px #000}
+.payment-modal h2{font-size:25px;margin:15px 0 5px;color:#ead49a}
+.payment-close{position:absolute;top:12px;left:14px;border:0;background:none;color:#d8c59c;font-size:26px;cursor:pointer}
+.payment-total{font-size:12px;color:#a9a194;margin:8px 0 22px}.payment-total b{color:#ead49a;font-size:18px;direction:ltr;display:inline-block}
+.payment-label{display:block;color:#d4c6a8;font-size:11px;margin:17px 0 8px}
+.payment-methods{display:flex;gap:9px}.payment-methods button{flex:1;background:#10100e;border:1px solid #49402e;color:#d4cbb9;padding:11px;cursor:pointer;font-size:11px}.payment-methods button.chosen{border-color:#c9a45b;background:#282113;color:#f0d99e}
+.payment-modal select,.payment-modal textarea{width:100%;background:#0b0b0a;border:1px solid rgba(201,164,91,.35);color:#f4f0e8;padding:11px;font:inherit;font-size:12px}
+.payment-address{display:flex;flex-direction:column;gap:7px;margin-top:12px;padding:13px;background:#0b0b09;border:1px solid rgba(201,164,91,.2)}
+.payment-address small{font-size:10px;color:#9b907b}.payment-address code{font:11px/1.8 monospace;color:#ead49a;overflow-wrap:anywhere;direction:ltr;text-align:left;user-select:all}
+.payment-disclaimer{font-size:10px;line-height:2;color:#a49a87;margin:13px 0}
+.payment-submit{width:100%;background:linear-gradient(110deg,#e1c27c,#b18a43);border:0;color:#17130b;padding:13px;font-weight:800;font-size:12px;cursor:pointer}.payment-submit:disabled{opacity:.45;cursor:not-allowed}
+.payment-error{font-size:12px;color:#e4a69b;background:#2a1713;padding:12px}
+@media(max-width:480px){.payment-modal{padding:25px 18px}.payment-address code{font-size:10px}}
