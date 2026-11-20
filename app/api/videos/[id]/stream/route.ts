@@ -75,7 +75,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   }
 
   const objectKey = hasActiveSubscription ? video.storage_key : video.preview_storage_key;
-  if (!hasActiveSubscription && (typeof objectKey !== "string" || !/^previews\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(objectKey))) {
+  if (typeof objectKey !== "string" || !objectKey) {
+    return NextResponse.json({ error: "فایل ویدیو پیدا نشد." }, { status: 404 });
+  }
+  if (!hasActiveSubscription && !/^previews\\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(objectKey)) {
     return NextResponse.json({ error: "پیش‌نمایش این ویدیو هنوز آماده نشده است." }, { status: 403 });
   }
 
