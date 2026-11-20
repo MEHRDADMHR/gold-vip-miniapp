@@ -32,10 +32,11 @@ export async function GET(_request: NextRequest) {
   if (!session) return NextResponse.json({ error: "ابتدا از طریق تلگرام وارد شوید." }, { status: 401 });
 
   const response = await fetch(
-    `${url}/rest/v1/videos?select=id,title,description,thumbnail_url,preview_seconds,created_at&is_published=eq.true&order=created_at.desc`,
+    `${url}/rest/v1/videos?select=id,title,description,thumbnail_url,preview_seconds,preview_storage_key,created_at&is_published=eq.true&order=created_at.desc`,
     { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" },
   );
   if (!response.ok) return NextResponse.json({ error: "دریافت فهرست ویدیوها ناموفق بود." }, { status: 502 });
-  const videos = await response.json();
+  const rows = await response.json() as Array<Record<string, unknown>>;
+  const videos = rows.map(({ preview_storage_key, ...video }) => ({ ...video, has_preview: typeof preview_storage_key === "string" && preview_storage_key.startsWith("previews/") }));
   return NextResponse.json({ videos });
 }
