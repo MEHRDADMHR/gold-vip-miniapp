@@ -17,6 +17,7 @@ declare global {
 }
 
 type Plan = { id: string; title: string; duration_days: number; price_minor: number; currency: string };
+type PaymentOptions = { methods: { usdt: Array<{ network: string; label: string; address: string }>; card: { number: string; holder: string } | null } };
 const planNotes = ["برای شروع عضویت", "انتخاب متعادل", "ارزش بیشتر در بلندمدت", "دسترسی بلندمدت"];
 
 export default function Home() {
@@ -25,6 +26,12 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOptions["methods"] | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"usdt" | "card">("usdt");
+  const [paymentNetwork, setPaymentNetwork] = useState("bep20");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/plans", { cache: "no-store" })
@@ -69,8 +76,37 @@ export default function Home() {
     }
   }, []);
 
-  function selectPlan(name: string) {
-    setNotice(`پلن «${name}» انتخاب شد. مرحله پرداخت در حال آماده‌سازی است.`);
+  async function selectPlan(plan: Plan) {
+    setSelectedPlan(plan); setPaymentOptions(null); setPaymentReference("");
+    setPaymentMethod("usdt"); setPaymentNetwork("bep20");
+    try {
+      const response = await fetch("/api/payment-options", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "دریافت روش‌های پرداخت ناموفق بود.");
+      setPaymentOptions(data.methods);
+      if (!data.methods.usdt?.length && data.methods.card) setPaymentMethod("card");
+    } catch (error) {
+      setSelectedPlan(null);
+      setNotice(error instanceof Error ? error.message : "خطا در دریافت روش‌های پرداخت.");
+    }
+  }
+
+  async function submitPaymentOrder() {
+    if (!selectedPlan) return;
+    setPaymentLoading(true);
+    try {
+      const response = await fetch("/api/payment-orders", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan_id: selectedPlan.id, payment_method: paymentMethod,
+          network: paymentMethod === "usdt" ? paymentNetwork : null, payment_reference: paymentReference }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "ثبت سفارش ناموفق بود.");
+      setSelectedPlan(null);
+      setNotice("سفارش پرداخت ثبت شد و پس از بررسی مدیر، نتیجه اعلام می‌شود. اشتراک فقط پس از تأیید فعال خواهد شد.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "ثبت سفارش ناموفق بود.");
+    } finally { setPaymentLoading(false); }
   }
 
   return (
@@ -140,7 +176,7 @@ export default function Home() {
                 <div className="plan-price">${price}<small>USD</small></div>
                 <div className="plan-rule" />
                 <p>{planNotes[index] || "دسترسی ویژه اعضا"}</p>
-                <button className={featured ? "plan-button gold" : "plan-button"} onClick={() => selectPlan(name)}>انتخاب این پلن <span>←</span></button>
+                <button className={featured ? "plan-button gold" : "plan-button"} onClick={() => selectPlan(plan)}>انتخاب این پلن <span>←</span></button>
               </article>
             );
           })}
@@ -173,6 +209,35 @@ export default function Home() {
         <span className="copyright">© 2026 لوتی پریمیوم CLUB</span>
       </footer>
 
+      {selectedPlan && <div className="payment-backdrop" role="presentation" onClick={() => !paymentLoading && setSelectedPlan(null)}>
+        <section className="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title" onClick={(event) => event.stopPropagation()}>
+          <button className="payment-close" onClick={() => setSelectedPlan(null)} aria-label="بستن">×</button>
+          <div className="eyebrow"><span /> تکمیل سفارش عضویت</div>
+          <h2 id="payment-title">{selectedPlan.title}</h2>
+          <p className="payment-total">مبلغ قابل پرداخت: <b>${(Number(selectedPlan.price_minor) / 100).toFixed(2)} USD</b></p>
+          {!paymentOptions ? <p className="membership-note">در حال دریافت روش‌های پرداخت…</p> : <>
+            {!paymentOptions.usdt.length && !paymentOptions.card ? <p className="payment-error">مدیر هنوز هیچ روش پرداختی را فعال و تنظیم نکرده است.</p> : <>
+              <label className="payment-label">روش پرداخت</label>
+              <div className="payment-methods">
+                {paymentOptions.usdt.length > 0 && <button className={paymentMethod === "usdt" ? "chosen" : ""} onClick={() => setPaymentMethod("usdt")}>تتر (USDT)</button>}
+                {paymentOptions.card && <button className={paymentMethod === "card" ? "chosen" : ""} onClick={() => setPaymentMethod("card")}>کارت‌به‌کارت</button>}
+              </div>
+              {paymentMethod === "usdt" && paymentOptions.usdt.length > 0 && <>
+                <label className="payment-label" htmlFor="payment-network">شبکه انتقال</label>
+                <select id="payment-network" value={paymentNetwork} onChange={(event) => setPaymentNetwork(event.target.value)}>
+                  {paymentOptions.usdt.map((item) => <option key={item.network} value={item.network}>{item.label}</option>)}
+                </select>
+                <div className="payment-address"><small>آدرس کیف پول مقصد</small><code>{paymentOptions.usdt.find((item) => item.network === paymentNetwork)?.address}</code></div>
+              </>}
+              {paymentMethod === "card" && paymentOptions.card && <div className="payment-address"><small>شماره کارت مقصد</small><code>{paymentOptions.card.number}</code><small>به نام: {paymentOptions.card.holder || "ثبت نشده"}</small></div>}
+              <label className="payment-label" htmlFor="payment-reference">{paymentMethod === "usdt" ? "شناسه تراکنش (TXID)" : "شماره پیگیری یا توضیح رسید"}</label>
+              <textarea id="payment-reference" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} placeholder={paymentMethod === "usdt" ? "شناسه تراکنش را وارد کن…" : "شماره پیگیری واریز را وارد کن…"} rows={3} />
+              <p className="payment-disclaimer">پس از انتقال وجه، اطلاعات را ثبت کن. سفارش برای بررسی مدیر ارسال می‌شود؛ اشتراک فقط پس از تأیید پرداخت فعال خواهد شد.</p>
+              <button className="payment-submit" onClick={submitPaymentOrder} disabled={paymentLoading || paymentReference.trim().length < 5}>{paymentLoading ? "در حال ثبت سفارش…" : "ثبت اطلاعات پرداخت"}</button>
+            </>}
+          </>}
+        </section>
+      </div>}
       {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
       {telegramName && <div className="welcome-pill">خوش آمدی، {telegramName}</div>}
       <div className="age-note">ورود به این پلتفرم صرفاً برای افراد ۱۸ سال به بالا و مطابق قوانین محل فعالیت مجاز است.</div>
