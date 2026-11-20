@@ -37,12 +37,12 @@ export async function POST(request: NextRequest) {
   }
 
   const usdtAddress = typeof body.usdt_bep20_address === "string" ? body.usdt_bep20_address.trim() : "";
-  const cardNumber = typeof body.card_number === "string" ? body.card_number.replace(/[\\s-]/g, "") : "";
+  const cardNumber = typeof body.card_number === "string" ? body.card_number.replace(/[\s-]/g, "") : "";
   const cardHolder = typeof body.card_holder === "string" ? body.card_holder.trim() : "";
   if (usdtAddress && !/^0x[a-fA-F0-9]{40}$/.test(usdtAddress)) {
     return NextResponse.json({ error: "آدرس کیف پول BEP20 باید یک آدرس معتبر ۴۲ کاراکتری با 0x باشد." }, { status: 400 });
   }
-  if (cardNumber && !/^\\d{16}$/.test(cardNumber)) {
+  if (cardNumber && !/^\d{16}$/.test(cardNumber)) {
     return NextResponse.json({ error: "شماره کارت باید ۱۶ رقم باشد." }, { status: 400 });
   }
   if (cardHolder.length > 100) return NextResponse.json({ error: "نام صاحب کارت بیش از حد طولانی است." }, { status: 400 });
