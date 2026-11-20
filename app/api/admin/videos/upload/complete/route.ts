@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "درخواست نامعتبر است." }, { status: 400 });
   }
 
-  if (typeof body.key !== "string" || !/^videos\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(body.key) ||
+  if (typeof body.key !== "string" || !/^(videos|previews)\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(body.key) ||
       typeof body.uploadId !== "string" || !body.uploadId ||
       !Array.isArray(body.parts) || body.parts.length < 1 || body.parts.length > 64 ||
       body.parts.some(part => !Number.isInteger(part.partNumber) || part.partNumber < 1 || part.partNumber > 64 ||
