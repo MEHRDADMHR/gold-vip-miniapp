@@ -77,21 +77,37 @@ export async function POST(request: NextRequest) {
     "Content-Type": "application/json",
   };
 
-  const upsertResponse = await fetch(`${baseUrl}/rest/v1/users?on_conflict=telegram_id`, {
-    method: "POST",
-    headers: { ...headers, Prefer: "resolution=merge-duplicates,return=representation" },
-    body: JSON.stringify({
-      telegram_id: user.id,
-      first_name: user.first_name ?? "",
-      last_name: user.last_name ?? "",
-      username: user.username ?? null,
-      updated_at: new Date().toISOString(),
-    }),
-    cache: "no-store",
-  });
+  let upsertResponse: Response;
+  try {
+    upsertResponse = await fetch(`${baseUrl}/rest/v1/users?on_conflict=telegram_id`, {
+      method: "POST",
+      headers: { ...headers, Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({
+        telegram_id: user.id,
+        first_name: user.first_name ?? "",
+        last_name: user.last_name ?? "",
+        username: user.username ?? null,
+        updated_at: new Date().toISOString(),
+      }),
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json({ error: "Could not reach Supabase. Check SUPABASE_URL and network settings." }, { status: 502 });
+  }
 
   if (!upsertResponse.ok) {
-    return NextResponse.json({ error: "Could not save Telegram account" }, { status: 502 });
+    let diagnostic = "";
+    try {
+      const payload = await upsertResponse.json() as { code?: unknown; message?: unknown };
+      const code = typeof payload.code === "string" && /^[A-Z0-9]+$/.test(payload.code) ? payload.code : "";
+      const message = typeof payload.message === "string" ? payload.message.slice(0, 220) : "";
+      diagnostic = [code, message].filter(Boolean).join(": ");
+    } catch {
+      diagnostic = "Supabase returned an unreadable error response";
+    }
+    return NextResponse.json({
+      error: `Supabase account save failed (HTTP ${upsertResponse.status})${diagnostic ? `: ${diagnostic}` : ""}`,
+    }, { status: 502 });
   }
 
   const savedUsers = await upsertResponse.json();
