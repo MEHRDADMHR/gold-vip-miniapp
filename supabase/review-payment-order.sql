@@ -52,7 +52,8 @@ begin
     coalesce(v_expiry, now()) + make_interval(days => v_plan.duration_days),
     case when v_order.payment_method = 'usdt'
       then 'manual_usdt_' || coalesce(v_order.network, 'unknown')
-      else 'manual_card' end,
+      when v_order.payment_method = 'card' then 'manual_card'
+      else 'manual_' || v_order.payment_method end,
     v_order.payment_reference
   ) returning id into v_subscription_id;
 
