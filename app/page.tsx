@@ -71,7 +71,7 @@ export default function Home() {
       <header className="topbar shell">
         <a className="brand" href="#" aria-label="صفحه اصلی">
           <span className="brand-mark">G</span>
-          <span className="brand-name">GOLDEN<span> CLUB</span></span>
+          <span className="brand-name">لوتی پریمیوم<span> CLUB</span></span>
         </a>
         <div className="top-actions">
           <span className={telegramState === "connected" ? "status connected" : "status"}>
@@ -153,9 +153,9 @@ export default function Home() {
       </section>
 
       <footer className="footer shell">
-        <a className="brand" href="#"><span className="brand-mark">G</span><span className="brand-name">GOLDEN<span> CLUB</span></span></a>
+        <a className="brand" href="#"><span className="brand-mark">G</span><span className="brand-name">لوتی پریمیوم<span> CLUB</span></span></a>
         <p>دسترسی ویژه، با احترام به حریم خصوصی.</p>
-        <span className="copyright">© 2026 GOLDEN CLUB</span>
+        <span className="copyright">© 2026 لوتی پریمیوم CLUB</span>
       </footer>
 
       {notice && <div className="notice" role="status"><span>{notice}</span><button onClick={() => setNotice("")}>×</button></div>}
