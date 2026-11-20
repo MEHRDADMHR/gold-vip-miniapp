@@ -77,6 +77,7 @@ export default function Home() {
           <span className={telegramState === "connected" ? "status connected" : "status"}>
             <i /> {telegramState === "connected" ? "تلگرام متصل است" : "عضویت ویژه"}
           </span>
+          <a className="admin-link" href="/library">کتابخانه ویدیوها <span>↗</span></a>
           <a className="admin-link" href="#membership">پلن‌ها <span>↗</span></a>
         </div>
       </header>
