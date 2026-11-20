@@ -157,3 +157,7 @@ h1 em,h2 em{font-style:normal;color:var(--gold-light)}
 .payment-submit{width:100%;background:linear-gradient(110deg,#e1c27c,#b18a43);border:0;color:#17130b;padding:13px;font-weight:800;font-size:12px;cursor:pointer}.payment-submit:disabled{opacity:.45;cursor:not-allowed}
 .payment-error{font-size:12px;color:#e4a69b;background:#2a1713;padding:12px}
 @media(max-width:480px){.payment-modal{padding:25px 18px}.payment-address code{font-size:10px}}
+
+
+.admin-subline{display:block;margin-top:4px;color:#9d927e;font-size:10px}
+.payment-reference-cell{max-width:220px;overflow-wrap:anywhere;direction:ltr;text-align:left;font:11px/1.7 monospace;color:#d9c38f}
