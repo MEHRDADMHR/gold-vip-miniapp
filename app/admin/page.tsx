@@ -7,7 +7,7 @@ type DashboardData = {
   role: string;
   data: { users: Row[]; videos: Row[]; plans: Row[]; subscriptions: Row[] };
 };
-type PaymentSettings = { usdt_bep20_address: string; card_number: string; card_holder: string; usdt_enabled: boolean; card_enabled: boolean };
+type PaymentSettings = { usdt_bep20_address: string; usdt_solana_address: string; usdt_polygon_address: string; card_number: string; card_holder: string; usdt_enabled: boolean; card_enabled: boolean };
 type VideoForm = { id?: string; title: string; description: string; thumbnail_url: string; storage_key: string; preview_storage_key: string; preview_seconds: string; is_published: boolean };
 const emptyVideo: VideoForm = { title: "", description: "", thumbnail_url: "", storage_key: "", preview_storage_key: "", preview_seconds: "15", is_published: false };
 const labels: Record<string, string> = { users: "کاربران", videos: "ویدیوها", plans: "پلن‌ها", subscriptions: "اشتراک‌ها" };
@@ -24,7 +24,7 @@ export default function AdminPage() {
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [planEdits, setPlanEdits] = useState<Record<string, { title: string; duration_days: string; price_minor: string; currency: string; is_active: boolean }>>({});
-  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({ usdt_bep20_address: "", card_number: "", card_holder: "", usdt_enabled: true, card_enabled: true });
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({ usdt_bep20_address: "", usdt_solana_address: "", usdt_polygon_address: "", card_number: "", card_holder: "", usdt_enabled: true, card_enabled: true });
   const [paymentLoading, setPaymentLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -197,6 +197,9 @@ export default function AdminPage() {
             <label className="admin-check"><input type="checkbox" checked={paymentSettings.usdt_enabled} onChange={e => setPaymentSettings(old => ({ ...old, usdt_enabled: e.target.checked }))}/> فعال بودن پرداخت تتر</label>
             <label>آدرس عمومی کیف پول BEP20<input dir="ltr" autoComplete="off" placeholder="0x..." value={paymentSettings.usdt_bep20_address} onChange={e => setPaymentSettings(old => ({ ...old, usdt_bep20_address: e.target.value }))}/></label>
             <p className="admin-hint">فقط آدرس عمومی کیف پول را وارد کن؛ عبارت بازیابی و کلید خصوصی هرگز نباید در سایت ذخیره شوند.</p>
+            <label>آدرس عمومی کیف پول تتر روی شبکه Solana<input dir="ltr" autoComplete="off" placeholder="آدرس سولانا" value={paymentSettings.usdt_solana_address} onChange={e => setPaymentSettings(old => ({ ...old, usdt_solana_address: e.target.value }))}/></label>
+            <label>آدرس عمومی کیف پول تتر روی شبکه Polygon<input dir="ltr" autoComplete="off" placeholder="0x..." value={paymentSettings.usdt_polygon_address} onChange={e => setPaymentSettings(old => ({ ...old, usdt_polygon_address: e.target.value }))}/></label>
+
             <h3>کارت‌به‌کارت</h3>
             <label className="admin-check"><input type="checkbox" checked={paymentSettings.card_enabled} onChange={e => setPaymentSettings(old => ({ ...old, card_enabled: e.target.checked }))}/> فعال بودن کارت‌به‌کارت</label>
             <label>شماره کارت ۱۶ رقمی<input dir="ltr" inputMode="numeric" maxLength={19} placeholder="0000 0000 0000 0000" value={paymentSettings.card_number} onChange={e => setPaymentSettings(old => ({ ...old, card_number: e.target.value }))}/></label>
