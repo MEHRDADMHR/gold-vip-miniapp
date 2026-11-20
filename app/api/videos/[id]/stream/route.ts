@@ -47,9 +47,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const { id } = await context.params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "شناسه ویدیو معتبر نیست." }, { status: 400 });
 
-  const videoResponse = await dbGet(url, key, `videos?select=id,storage_key,is_published&id=eq.${encodeURIComponent(id)}&limit=1`);
+  const videoResponse = await dbGet(url, key, `videos?select=id,storage_key,preview_storage_key,is_published&id=eq.${encodeURIComponent(id)}&limit=1`);
   if (!videoResponse.ok) return NextResponse.json({ error: "دریافت اطلاعات ویدیو ناموفق بود." }, { status: 502 });
-  const videos = await videoResponse.json() as Array<{ id: string; storage_key: string; is_published: boolean }>;
+  const videos = await videoResponse.json() as Array<{ id: string; storage_key: string; preview_storage_key?: string | null; is_published: boolean }>;
   const video = videos[0];
   if (!video || !video.is_published || typeof video.storage_key !== "string" || !video.storage_key.startsWith("videos/")) {
     return NextResponse.json({ error: "این ویدیو در دسترس نیست." }, { status: 404 });
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const admins = await adminResponse.json() as Array<{ role: string }>;
   const isAdmin = Array.isArray(admins) && admins.some((admin) => ["admin", "editor"].includes(admin.role));
 
+  let hasActiveSubscription = isAdmin;
   if (!isAdmin) {
     const userResponse = await dbGet(url, key, `users?select=id,is_blocked&id=eq.${encodeURIComponent(session.uid)}&limit=1`);
     if (!userResponse.ok) return NextResponse.json({ error: "بررسی حساب کاربری ناموفق بود." }, { status: 502 });
@@ -70,9 +71,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const subResponse = await dbGet(url, key, `subscriptions?select=id&user_id=eq.${encodeURIComponent(session.uid)}&status=eq.active&expires_at=gt.${activeAfter}&limit=1`);
     if (!subResponse.ok) return NextResponse.json({ error: "بررسی اشتراک ناموفق بود." }, { status: 502 });
     const subscriptions = await subResponse.json() as unknown[];
-    if (!Array.isArray(subscriptions) || subscriptions.length === 0) {
-      return NextResponse.json({ error: "برای پخش کامل ویدیو به اشتراک فعال نیاز دارید." }, { status: 403 });
-    }
+    hasActiveSubscription = Array.isArray(subscriptions) && subscriptions.length > 0;
+  }
+
+  const objectKey = hasActiveSubscription ? video.storage_key : video.preview_storage_key;
+  if (!hasActiveSubscription && (typeof objectKey !== "string" || !/^previews\\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(objectKey))) {
+    return NextResponse.json({ error: "پیش‌نمایش این ویدیو هنوز آماده نشده است." }, { status: 403 });
+  }
   }
 
   try {
@@ -80,7 +85,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const range = request.headers.get("range") || undefined;
     const object = await client.send(new GetObjectCommand({
       Bucket: bucket,
-      Key: video.storage_key,
+      Key: objectKey,
       ...(range ? { Range: range } : {}),
     }));
     if (!object.Body) return NextResponse.json({ error: "فایل ویدیو پیدا نشد." }, { status: 404 });
