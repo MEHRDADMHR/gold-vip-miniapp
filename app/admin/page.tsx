@@ -76,9 +76,9 @@ export default function AdminPage() {
   const counts = result ? (["users", "videos", "plans", "subscriptions"] as const).map(key => [key, result.data[key].length] as const) : [];
 
   return <main className="admin-page" dir="rtl">
-    <header className="admin-header"><a href="/" className="admin-brand"><span>G</span> GOLDEN CLUB</a><div><span className="admin-role">{result?.role === "admin" ? "مدیر اصلی" : "مدیر محتوا"}</span><a href="/">بازگشت به سایت ↗</a></div></header>
+    <header className="admin-header"><a href="/" className="admin-brand"><span>G</span> لوتی پریمیوم</a><div><span className="admin-role">{result?.role === "admin" ? "مدیر اصلی" : "مدیر محتوا"}</span><a href="/">بازگشت به سایت ↗</a></div></header>
     <section className="admin-content">
-      <div className="admin-heading"><div><p className="admin-eyebrow">CONTROL CENTER / 2026</p><h1>پنل مدیریت <em>طلایی</em></h1><p>مدیریت کاربران، محتوا و اشتراک‌های GOLDEN CLUB</p></div><button onClick={() => void load()} disabled={loading}>بروزرسانی ↻</button></div>
+      <div className="admin-heading"><div><p className="admin-eyebrow">CONTROL CENTER / 2026</p><h1>پنل مدیریت <em>طلایی</em></h1><p>مدیریت کاربران، محتوا و اشتراک‌های لوتی پریمیوم</p></div><button onClick={() => void load()} disabled={loading}>بروزرسانی ↻</button></div>
       {error && <div className="admin-error">{error}</div>}{notice && <div className="admin-notice">{notice}</div>}
       {loading && <div className="admin-loading">در حال دریافت اطلاعات امن پنل…</div>}
       {result && <>
