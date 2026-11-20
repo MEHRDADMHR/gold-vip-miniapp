@@ -71,3 +71,16 @@ alter table public.plans enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.videos enable row level security;
 alter table public.admins enable row level security;
+
+-- Explicit Data API grants for server-side access (required on projects
+-- where new public tables are not automatically exposed).
+grant usage on schema public to service_role;
+
+grant select, insert, update, delete
+on table
+  public.users,
+  public.plans,
+  public.subscriptions,
+  public.videos,
+  public.admins
+ to service_role;
