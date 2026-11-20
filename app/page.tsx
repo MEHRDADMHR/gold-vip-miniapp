@@ -84,7 +84,10 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "دریافت روش‌های پرداخت ناموفق بود.");
       setPaymentOptions(data.methods);
-      if (!data.methods.usdt?.length) {\n        if (data.methods.native?.length) setPaymentMethod(data.methods.native[0].asset);\n        else if (data.methods.card) setPaymentMethod("card");\n      }
+      if (!data.methods.usdt?.length) {
+        if (data.methods.native?.length) setPaymentMethod(data.methods.native[0].asset);
+        else if (data.methods.card) setPaymentMethod("card");
+      }
     } catch (error) {
       setSelectedPlan(null);
       setNotice(error instanceof Error ? error.message : "خطا در دریافت روش‌های پرداخت.");
@@ -220,7 +223,8 @@ export default function Home() {
               <label className="payment-label">روش پرداخت</label>
               <div className="payment-methods">
                 {paymentOptions.usdt.length > 0 && <button className={paymentMethod === "usdt" ? "chosen" : ""} onClick={() => setPaymentMethod("usdt")}>تتر (USDT)</button>}
-                {paymentOptions.native.map((item) => <button key={item.asset} className={paymentMethod === item.asset ? "chosen" : ""} onClick={() => setPaymentMethod(item.asset)}>{item.label}</button>)}\n                {paymentOptions.card && <button className={paymentMethod === "card" ? "chosen" : ""} onClick={() => setPaymentMethod("card")}>کارت‌به‌کارت</button>}
+                {paymentOptions.native.map((item) => <button key={item.asset} className={paymentMethod === item.asset ? "chosen" : ""} onClick={() => setPaymentMethod(item.asset)}>{item.label}</button>)}
+                {paymentOptions.card && <button className={paymentMethod === "card" ? "chosen" : ""} onClick={() => setPaymentMethod("card")}>کارت‌به‌کارت</button>}
               </div>
               {paymentMethod === "usdt" && paymentOptions.usdt.length > 0 && <>
                 <label className="payment-label" htmlFor="payment-network">شبکه انتقال</label>
@@ -229,7 +233,8 @@ export default function Home() {
                 </select>
                 <div className="payment-address"><small>آدرس کیف پول مقصد</small><code>{paymentOptions.usdt.find((item) => item.network === paymentNetwork)?.address}</code></div>
               </>}
-              {paymentMethod !== "usdt" && paymentMethod !== "card" && paymentOptions.native.find((item) => item.asset === paymentMethod) && <div className="payment-address"><small>آدرس کیف پول مقصد ({paymentMethod.toUpperCase()})</small><code>{paymentOptions.native.find((item) => item.asset === paymentMethod)?.address}</code><small>مبلغ معادل را خودت محاسبه کن و دقیقاً همان توکن را به همین شبکه بفرست.</small></div>}\n              {paymentMethod === "card" && paymentOptions.card && <div className="payment-address"><small>شماره کارت مقصد</small><code>{paymentOptions.card.number}</code><small>به نام: {paymentOptions.card.holder || "ثبت نشده"}</small></div>}
+              {paymentMethod !== "usdt" && paymentMethod !== "card" && paymentOptions.native.find((item) => item.asset === paymentMethod) && <div className="payment-address"><small>آدرس کیف پول مقصد ({paymentMethod.toUpperCase()})</small><code>{paymentOptions.native.find((item) => item.asset === paymentMethod)?.address}</code><small>مبلغ معادل را خودت محاسبه کن و دقیقاً همان توکن را به همین شبکه بفرست.</small></div>}
+              {paymentMethod === "card" && paymentOptions.card && <div className="payment-address"><small>شماره کارت مقصد</small><code>{paymentOptions.card.number}</code><small>به نام: {paymentOptions.card.holder || "ثبت نشده"}</small></div>}
               <label className="payment-label" htmlFor="payment-reference">{paymentMethod === "card" ? "شماره پیگیری یا توضیح رسید" : "شناسه تراکنش (TXID)"}</label>
               <textarea id="payment-reference" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} placeholder={paymentMethod === "card" ? "شماره پیگیری واریز را وارد کن…" : "شناسه تراکنش را وارد کن…"} rows={3} />
               <p className="payment-disclaimer">مبلغ معادل ارز دیجیتال را خودت محاسبه کن. فقط همان توکن و شبکه انتخاب‌شده را بفرست؛ سپس TXID را ثبت کن. سفارش دستی بررسی می‌شود و اشتراک فقط پس از تأیید فعال خواهد شد.</p>
