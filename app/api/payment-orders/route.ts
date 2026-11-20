@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   const method = body.payment_method;
   const network = body.network;
   const reference = typeof body.payment_reference === "string" ? body.payment_reference.trim() : "";
-  if (!planId || !["usdt", "card"].includes(String(method))) {
+  if (!planId || !["usdt", "bnb", "sol", "pol", "card"].includes(String(method))) {
     return NextResponse.json({ error: "پلن یا روش پرداخت معتبر نیست." }, { status: 400 });
   }
   if (reference.length < 5 || reference.length > 500) {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   if (method === "usdt" && !["bep20", "solana", "polygon"].includes(String(network))) {
     return NextResponse.json({ error: "شبکه تتر معتبر نیست." }, { status: 400 });
   }
-  if (method === "card" && network !== null && network !== undefined && network !== "") {
+  if (method !== "usdt" && network !== null && network !== undefined && network !== "") {
     return NextResponse.json({ error: "شبکه برای پرداخت کارت‌به‌کارت نباید ارسال شود." }, { status: 400 });
   }
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "این پلن در حال حاضر قابل خرید نیست." }, { status: 400 });
   }
 
-  const settingsResponse = await fetch(`${context.url}/rest/v1/payment_settings?id=eq.1&select=usdt_bep20_address,usdt_solana_address,usdt_polygon_address,card_number,card_holder,usdt_enabled,card_enabled`, { headers, cache: "no-store" });
+  const settingsResponse = await fetch(`${context.url}/rest/v1/payment_settings?id=eq.1&select=usdt_bep20_address,usdt_solana_address,usdt_polygon_address,bnb_address,sol_address,pol_address,card_number,card_holder,usdt_enabled,bnb_enabled,sol_enabled,pol_enabled,card_enabled`, { headers, cache: "no-store" });
   if (!settingsResponse.ok) return NextResponse.json({ error: "خواندن تنظیمات پرداخت ناموفق بود." }, { status: 502 });
   const settingsRows = await settingsResponse.json();
   const settings = settingsRows[0];
@@ -80,7 +80,13 @@ export async function POST(request: NextRequest) {
   if (method === "usdt") {
     const address = network === "bep20" ? settings.usdt_bep20_address : network === "solana" ? settings.usdt_solana_address : settings.usdt_polygon_address;
     if (!settings.usdt_enabled || !address) return NextResponse.json({ error: "این شبکه تتر هنوز توسط مدیر فعال و تنظیم نشده است." }, { status: 400 });
-  } else if (!settings.card_enabled || !settings.card_number) {
+  } else if (method === "bnb" && (!settings.bnb_enabled || !settings.bnb_address)) {
+    return NextResponse.json({ error: "پرداخت BNB هنوز توسط مدیر فعال و تنظیم نشده است." }, { status: 400 });
+  } else if (method === "sol" && (!settings.sol_enabled || !settings.sol_address)) {
+    return NextResponse.json({ error: "پرداخت SOL هنوز توسط مدیر فعال و تنظیم نشده است." }, { status: 400 });
+  } else if (method === "pol" && (!settings.pol_enabled || !settings.pol_address)) {
+    return NextResponse.json({ error: "پرداخت POL هنوز توسط مدیر فعال و تنظیم نشده است." }, { status: 400 });
+  } else if (method === "card" && (!settings.card_enabled || !settings.card_number)) {
     return NextResponse.json({ error: "پرداخت کارت‌به‌کارت هنوز توسط مدیر فعال و تنظیم نشده است." }, { status: 400 });
   }
 
