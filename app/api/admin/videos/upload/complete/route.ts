@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;
+  if (auth.role !== "admin") return NextResponse.json({ error: "فقط مدیر اصلی اجازه آپلود ویدیو دارد." }, { status: 403 });
 
   let body: {
     key?: string;
