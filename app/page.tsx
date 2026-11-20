@@ -17,7 +17,7 @@ declare global {
 }
 
 type Plan = { id: string; title: string; duration_days: number; price_minor: number; currency: string };
-type PaymentOptions = { methods: { usdt: Array<{ network: string; label: string; address: string }>; card: { number: string; holder: string } | null } };
+type PaymentOptions = { methods: { usdt: Array<{ network: string; label: string; address: string }>; native: Array<{ asset: "bnb" | "sol" | "pol"; label: string; address: string }>; card: { number: string; holder: string } | null } };
 const planNotes = ["برای شروع عضویت", "انتخاب متعادل", "ارزش بیشتر در بلندمدت", "دسترسی بلندمدت"];
 
 export default function Home() {
@@ -28,7 +28,7 @@ export default function Home() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOptions["methods"] | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"usdt" | "card">("usdt");
+  const [paymentMethod, setPaymentMethod] = useState<"usdt" | "bnb" | "sol" | "pol" | "card">("usdt");
   const [paymentNetwork, setPaymentNetwork] = useState("bep20");
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -84,7 +84,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "دریافت روش‌های پرداخت ناموفق بود.");
       setPaymentOptions(data.methods);
-      if (!data.methods.usdt?.length && data.methods.card) setPaymentMethod("card");
+      if (!data.methods.usdt?.length) {\n        if (data.methods.native?.length) setPaymentMethod(data.methods.native[0].asset);\n        else if (data.methods.card) setPaymentMethod("card");\n      }
     } catch (error) {
       setSelectedPlan(null);
       setNotice(error instanceof Error ? error.message : "خطا در دریافت روش‌های پرداخت.");
@@ -216,11 +216,11 @@ export default function Home() {
           <h2 id="payment-title">{selectedPlan.title}</h2>
           <p className="payment-total">مبلغ قابل پرداخت: <b>${(Number(selectedPlan.price_minor) / 100).toFixed(2)} USD</b></p>
           {!paymentOptions ? <p className="membership-note">در حال دریافت روش‌های پرداخت…</p> : <>
-            {!paymentOptions.usdt.length && !paymentOptions.card ? <p className="payment-error">مدیر هنوز هیچ روش پرداختی را فعال و تنظیم نکرده است.</p> : <>
+            {!paymentOptions.usdt.length && !paymentOptions.native.length && !paymentOptions.card ? <p className="payment-error">مدیر هنوز هیچ روش پرداختی را فعال و تنظیم نکرده است.</p> : <>
               <label className="payment-label">روش پرداخت</label>
               <div className="payment-methods">
                 {paymentOptions.usdt.length > 0 && <button className={paymentMethod === "usdt" ? "chosen" : ""} onClick={() => setPaymentMethod("usdt")}>تتر (USDT)</button>}
-                {paymentOptions.card && <button className={paymentMethod === "card" ? "chosen" : ""} onClick={() => setPaymentMethod("card")}>کارت‌به‌کارت</button>}
+                {paymentOptions.native.map((item) => <button key={item.asset} className={paymentMethod === item.asset ? "chosen" : ""} onClick={() => setPaymentMethod(item.asset)}>{item.label}</button>)}\n                {paymentOptions.card && <button className={paymentMethod === "card" ? "chosen" : ""} onClick={() => setPaymentMethod("card")}>کارت‌به‌کارت</button>}
               </div>
               {paymentMethod === "usdt" && paymentOptions.usdt.length > 0 && <>
                 <label className="payment-label" htmlFor="payment-network">شبکه انتقال</label>
@@ -229,10 +229,10 @@ export default function Home() {
                 </select>
                 <div className="payment-address"><small>آدرس کیف پول مقصد</small><code>{paymentOptions.usdt.find((item) => item.network === paymentNetwork)?.address}</code></div>
               </>}
-              {paymentMethod === "card" && paymentOptions.card && <div className="payment-address"><small>شماره کارت مقصد</small><code>{paymentOptions.card.number}</code><small>به نام: {paymentOptions.card.holder || "ثبت نشده"}</small></div>}
-              <label className="payment-label" htmlFor="payment-reference">{paymentMethod === "usdt" ? "شناسه تراکنش (TXID)" : "شماره پیگیری یا توضیح رسید"}</label>
-              <textarea id="payment-reference" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} placeholder={paymentMethod === "usdt" ? "شناسه تراکنش را وارد کن…" : "شماره پیگیری واریز را وارد کن…"} rows={3} />
-              <p className="payment-disclaimer">پس از انتقال وجه، اطلاعات را ثبت کن. سفارش برای بررسی مدیر ارسال می‌شود؛ اشتراک فقط پس از تأیید پرداخت فعال خواهد شد.</p>
+              {paymentMethod !== "usdt" && paymentMethod !== "card" && paymentOptions.native.find((item) => item.asset === paymentMethod) && <div className="payment-address"><small>آدرس کیف پول مقصد ({paymentMethod.toUpperCase()})</small><code>{paymentOptions.native.find((item) => item.asset === paymentMethod)?.address}</code><small>مبلغ معادل را خودت محاسبه کن و دقیقاً همان توکن را به همین شبکه بفرست.</small></div>}\n              {paymentMethod === "card" && paymentOptions.card && <div className="payment-address"><small>شماره کارت مقصد</small><code>{paymentOptions.card.number}</code><small>به نام: {paymentOptions.card.holder || "ثبت نشده"}</small></div>}
+              <label className="payment-label" htmlFor="payment-reference">{paymentMethod === "card" ? "شماره پیگیری یا توضیح رسید" : "شناسه تراکنش (TXID)"}</label>
+              <textarea id="payment-reference" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} placeholder={paymentMethod === "card" ? "شماره پیگیری واریز را وارد کن…" : "شناسه تراکنش را وارد کن…"} rows={3} />
+              <p className="payment-disclaimer">مبلغ معادل ارز دیجیتال را خودت محاسبه کن. فقط همان توکن و شبکه انتخاب‌شده را بفرست؛ سپس TXID را ثبت کن. سفارش دستی بررسی می‌شود و اشتراک فقط پس از تأیید فعال خواهد شد.</p>
               <button className="payment-submit" onClick={submitPaymentOrder} disabled={paymentLoading || paymentReference.trim().length < 5}>{paymentLoading ? "در حال ثبت سفارش…" : "ثبت اطلاعات پرداخت"}</button>
             </>}
           </>}
