@@ -7,6 +7,7 @@ type DashboardData = {
   role: string;
   data: { users: Row[]; videos: Row[]; plans: Row[]; subscriptions: Row[] };
 };
+type PaymentSettings = { usdt_bep20_address: string; card_number: string; card_holder: string; usdt_enabled: boolean; card_enabled: boolean };
 type VideoForm = { id?: string; title: string; description: string; thumbnail_url: string; storage_key: string; preview_storage_key: string; preview_seconds: string; is_published: boolean };
 const emptyVideo: VideoForm = { title: "", description: "", thumbnail_url: "", storage_key: "", preview_storage_key: "", preview_seconds: "15", is_published: false };
 const labels: Record<string, string> = { users: "کاربران", videos: "ویدیوها", plans: "پلن‌ها", subscriptions: "اشتراک‌ها" };
@@ -23,6 +24,8 @@ export default function AdminPage() {
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [planEdits, setPlanEdits] = useState<Record<string, { title: string; duration_days: string; price_minor: string; currency: string; is_active: boolean }>>({});
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({ usdt_bep20_address: "", card_number: "", card_holder: "", usdt_enabled: true, card_enabled: true });
+  const [paymentLoading, setPaymentLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -42,6 +45,34 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const loadPaymentSettings = useCallback(async () => {
+    setPaymentLoading(true);
+    try {
+      const response = await fetch("/api/admin/payment-settings", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "بارگذاری تنظیمات پرداخت ناموفق بود");
+      setPaymentSettings(body.settings as PaymentSettings);
+    } catch (e) { setError(e instanceof Error ? e.message : "خطای بارگذاری تنظیمات پرداخت"); }
+    finally { setPaymentLoading(false); }
+  }, []);
+
+  useEffect(() => { void loadPaymentSettings(); }, [loadPaymentSettings]);
+
+  async function savePaymentSettings(event: React.FormEvent) {
+    event.preventDefault(); setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/admin/payment-settings", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentSettings),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "ذخیره تنظیمات پرداخت ناموفق بود");
+      setNotice("تنظیمات پرداخت با موفقیت ذخیره شد.");
+      await loadPaymentSettings();
+    } catch (e) { setError(e instanceof Error ? e.message : "خطای ذخیره تنظیمات پرداخت"); }
+    finally { setSaving(false); }
+  }
 
   async function mutate(method: "POST" | "PATCH" | "DELETE", body?: unknown, query = "") {
     setSaving(true); setError(""); setNotice("");
@@ -156,6 +187,22 @@ export default function AdminPage() {
             const id = String(row.id); const p = planEdits[id]; if (!p) return null;
             return <tr key={id}><td>{id}</td><td><input value={p.title} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, title: e.target.value } }))}/></td><td><input type="number" min="1" value={p.duration_days} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, duration_days: e.target.value } }))}/></td><td><input type="number" min="0" value={p.price_minor} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, price_minor: e.target.value } }))}/></td><td><input value={p.currency} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, currency: e.target.value } }))}/></td><td><input type="checkbox" checked={p.is_active} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, is_active: e.target.checked } }))}/></td><td><button className="admin-text-action" onClick={() => void savePlan(id)} disabled={saving}>ذخیره</button></td></tr>;
           })}</tbody></table></div>
+        </section>
+
+
+        <section className="admin-panel admin-wide">
+          <div className="admin-panel-title"><h2>تنظیمات پرداخت</h2><span>اطلاعات دریافت وجه فقط در پنل مدیر اصلی قابل تغییر است.</span></div>
+          {paymentLoading ? <p className="admin-loading">در حال دریافت تنظیمات پرداخت…</p> : <form className="admin-form" onSubmit={savePaymentSettings}>
+            <h3>دریافت تتر روی شبکه BNB Smart Chain (BEP20)</h3>
+            <label className="admin-check"><input type="checkbox" checked={paymentSettings.usdt_enabled} onChange={e => setPaymentSettings(old => ({ ...old, usdt_enabled: e.target.checked }))}/> فعال بودن پرداخت تتر</label>
+            <label>آدرس عمومی کیف پول BEP20<input dir="ltr" autoComplete="off" placeholder="0x..." value={paymentSettings.usdt_bep20_address} onChange={e => setPaymentSettings(old => ({ ...old, usdt_bep20_address: e.target.value }))}/></label>
+            <p className="admin-hint">فقط آدرس عمومی کیف پول را وارد کن؛ عبارت بازیابی و کلید خصوصی هرگز نباید در سایت ذخیره شوند.</p>
+            <h3>کارت‌به‌کارت</h3>
+            <label className="admin-check"><input type="checkbox" checked={paymentSettings.card_enabled} onChange={e => setPaymentSettings(old => ({ ...old, card_enabled: e.target.checked }))}/> فعال بودن کارت‌به‌کارت</label>
+            <label>شماره کارت ۱۶ رقمی<input dir="ltr" inputMode="numeric" maxLength={19} placeholder="0000 0000 0000 0000" value={paymentSettings.card_number} onChange={e => setPaymentSettings(old => ({ ...old, card_number: e.target.value }))}/></label>
+            <label>نام صاحب کارت<input value={paymentSettings.card_holder} onChange={e => setPaymentSettings(old => ({ ...old, card_holder: e.target.value }))}/></label>
+            <div className="admin-form-actions"><button disabled={saving}>{saving ? "در حال ذخیره…" : "ذخیره تنظیمات پرداخت"}</button></div>
+          </form>}
         </section>
 
         <div className="admin-sections">
