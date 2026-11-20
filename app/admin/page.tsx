@@ -19,6 +19,8 @@ export default function AdminPage() {
   const [video, setVideo] = useState<VideoForm>(emptyVideo);
   const [showVideoForm, setShowVideoForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [planEdits, setPlanEdits] = useState<Record<string, { title: string; duration_days: string; price_minor: string; currency: string; is_active: boolean }>>({});
 
   const load = useCallback(async () => {
@@ -56,14 +58,56 @@ export default function AdminPage() {
     finally { setSaving(false); }
   }
 
+  async function uploadVideoFile(file: File) {
+    const initResponse = await fetch("/api/admin/videos/upload/initiate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
+    });
+    const init = await initResponse.json();
+    if (!initResponse.ok) throw new Error(init.error || "شروع آپلود ناموفق بود");
+
+    const uploadedParts: Array<{ partNumber: number; etag: string }> = [];
+    for (const part of init.parts as Array<{ partNumber: number; url: string }>) {
+      const start = (part.partNumber - 1) * Number(init.partSize);
+      const end = Math.min(start + Number(init.partSize), file.size);
+      const response = await fetch(part.url, { method: "PUT", body: file.slice(start, end) });
+      if (!response.ok) throw new Error("آپلود بخش " + part.partNumber + " ناموفق بود");
+      const etag = response.headers.get("ETag");
+      if (!etag) throw new Error("ETag فایل دریافت نشد؛ تنظیم CORS باکت را بررسی کن");
+      uploadedParts.push({ partNumber: part.partNumber, etag });
+      setUploadProgress(Math.round((uploadedParts.length / init.parts.length) * 100));
+    }
+
+    const completeResponse = await fetch("/api/admin/videos/upload/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: init.key, uploadId: init.uploadId, parts: uploadedParts }),
+    });
+    const complete = await completeResponse.json();
+    if (!completeResponse.ok) throw new Error(complete.error || "تکمیل آپلود ناموفق بود");
+    return String(complete.storage_key);
+  }
+
   async function saveVideo(event: React.FormEvent) {
     event.preventDefault();
-    const ok = await mutate(video.id ? "PATCH" : "POST", { kind: "video", ...video, preview_seconds: Number(video.preview_seconds) });
-    if (ok) { setVideo(emptyVideo); setShowVideoForm(false); }
+    setSaving(true); setError(""); setNotice(""); setUploadProgress(0);
+    try {
+      let storage_key = video.storage_key;
+      if (videoFile) storage_key = await uploadVideoFile(videoFile);
+      if (!storage_key) throw new Error("ابتدا فایل ویدیویی را انتخاب کن.");
+      const ok = await mutate(video.id ? "PATCH" : "POST", { kind: "video", ...video, storage_key, preview_seconds: Number(video.preview_seconds) });
+      if (ok) { setVideo(emptyVideo); setVideoFile(null); setShowVideoForm(false); setUploadProgress(0); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "آپلود ویدیو ناموفق بود");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function editVideo(row: Row) {
     setVideo({ id: String(row.id), title: String(row.title ?? ""), description: String(row.description ?? ""), thumbnail_url: String(row.thumbnail_url ?? ""), storage_key: String(row.storage_key ?? ""), preview_seconds: String(row.preview_seconds ?? 30), is_published: row.is_published === true });
+    setVideoFile(null); setUploadProgress(0);
     setShowVideoForm(true);
   }
 
@@ -84,10 +128,10 @@ export default function AdminPage() {
       {result && <>
         <div className="admin-stats">{counts.map(([key, count]) => <article key={key}><span>{labels[key]}</span><strong>{count.toLocaleString("fa-IR")}</strong><small>رکوردهای دریافت‌شده</small></article>)}</div>
         <section className="admin-panel admin-wide">
-          <div className="admin-panel-title"><h2>مدیریت ویدیوها</h2><button className="admin-action" onClick={() => { setVideo(emptyVideo); setShowVideoForm(!showVideoForm); }}>+ افزودن ویدیو</button></div>
+          <div className="admin-panel-title"><h2>مدیریت ویدیوها</h2><button className="admin-action" onClick={() => { setVideo(emptyVideo); setVideoFile(null); setUploadProgress(0); setShowVideoForm(!showVideoForm); }}>+ افزودن ویدیو</button></div>
           {showVideoForm && <form className="admin-form" onSubmit={saveVideo}>
             <label>عنوان ویدیو<input required value={video.title} onChange={e => setVideo({ ...video, title: e.target.value })}/></label>
-            <label>مسیر فایل در فضای ذخیره‌سازی<input required placeholder="مثلاً videos/clip-01.mp4" value={video.storage_key} onChange={e => setVideo({ ...video, storage_key: e.target.value })}/></label>
+            <label>انتخاب فایل ویدیو (حداکثر ۵۰۰ مگابایت)<input type="file" accept="video/*" onChange={e => { const file = e.target.files?.[0] || null; if (file && file.size > 500 * 1024 * 1024) { setError("حجم فایل نباید بیشتر از ۵۰۰ مگابایت باشد."); e.target.value = ""; setVideoFile(null); return; } setError(""); setVideoFile(file); }}/></label>\n            {videoFile && <p className="admin-hint">فایل انتخاب‌شده: {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(1)} مگابایت)</p>}\n            {saving && videoFile && <p className="admin-hint">در حال آپلود مستقیم به فضای ابری: {uploadProgress}٪</p>}
             <label>آدرس تصویر کاور<input value={video.thumbnail_url} onChange={e => setVideo({ ...video, thumbnail_url: e.target.value })}/></label>
             <label>توضیحات<textarea value={video.description} onChange={e => setVideo({ ...video, description: e.target.value })}/></label>
             <label>مدت پیش‌نمایش (ثانیه)<input type="number" min="0" max="300" value={video.preview_seconds} onChange={e => setVideo({ ...video, preview_seconds: e.target.value })}/></label>
@@ -95,7 +139,7 @@ export default function AdminPage() {
             <div className="admin-form-actions"><button disabled={saving}>{saving ? "در حال ذخیره…" : "ذخیره ویدیو"}</button><button type="button" onClick={() => setShowVideoForm(false)}>انصراف</button></div>
           </form>}
           {result.data.videos.length === 0 ? <p className="admin-empty">هنوز ویدیویی ثبت نشده است.</p> : <div className="admin-table-wrap"><table><thead><tr><th>عنوان</th><th>پیش‌نمایش</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>{result.data.videos.map(row => <tr key={String(row.id)}><td>{String(row.title)}</td><td>{String(row.preview_seconds)} ثانیه</td><td>{row.is_published ? "منتشرشده" : "پیش‌نویس"}</td><td><button className="admin-text-action" onClick={() => editVideo(row)}>ویرایش</button><button className="admin-text-action danger" onClick={() => { if (confirm("این ویدیو حذف شود؟")) void mutate("DELETE", undefined, "?id=" + encodeURIComponent(String(row.id))); }}>حذف</button></td></tr>)}</tbody></table></div>}
-          <p className="admin-hint">فعلاً مسیر فایل و لینک کاور را وارد می‌کنی؛ بارگذاری مستقیم فایل و پخش امن ویدیو در مرحله اتصال فضای ذخیره‌سازی پیاده‌سازی می‌شود.</p>
+          <p className="admin-hint">فایل‌ها مستقیماً و به‌صورت خصوصی در Cloudflare R2 ذخیره می‌شوند. برای جایگزینی فایل ویدیوی قبلی، فایل جدید انتخاب کن.</p>
         </section>
 
         <section className="admin-panel admin-wide">
