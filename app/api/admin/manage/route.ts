@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       description: typeof body.description === "string" ? body.description.trim() : null,
       thumbnail_url: typeof body.thumbnail_url === "string" && body.thumbnail_url.trim() ? body.thumbnail_url.trim() : null,
       storage_key: storageKey,
+      preview_storage_key: typeof body.preview_storage_key === "string" && /^previews\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(body.preview_storage_key) ? body.preview_storage_key : null,
       preview_seconds: Math.max(0, Math.min(300, Number(body.preview_seconds) || 30)),
       is_published: body.is_published === true,
     };
@@ -98,11 +99,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "اطلاعات ویدیو معتبر نیست." }, { status: 400 });
   }
   const payload: Record<string, unknown> = {};
-  for (const field of ["title", "description", "thumbnail_url", "storage_key", "preview_seconds", "is_published"]) {
+  for (const field of ["title", "description", "thumbnail_url", "storage_key", "preview_storage_key", "preview_seconds", "is_published"]) {
     if (field in body) payload[field] = body[field];
   }
   if (typeof payload.title === "string") payload.title = payload.title.trim();
   if (typeof payload.storage_key === "string") payload.storage_key = payload.storage_key.trim();
+  if ("preview_storage_key" in payload && payload.preview_storage_key !== null && (typeof payload.preview_storage_key !== "string" || !/^previews\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(payload.preview_storage_key))) return NextResponse.json({ error: "فایل پیش‌نمایش معتبر نیست." }, { status: 400 });
   if ("preview_seconds" in payload) payload.preview_seconds = Math.max(0, Math.min(300, Number(payload.preview_seconds) || 0));
   const response = await supabaseRequest(auth.url, auth.key, `videos?id=eq.${encodeURIComponent(body.id)}`, "PATCH", payload, "return=representation");
   if (!response.ok) return NextResponse.json({ error: "ویرایش ویدیو ناموفق بود." }, { status: 502 });
