@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "شبکه تتر معتبر نیست." }, { status: 400 });
   }
   if (method !== "usdt" && network !== null && network !== undefined && network !== "") {
-    return NextResponse.json({ error: "شبکه برای پرداخت کارت‌به‌کارت نباید ارسال شود." }, { status: 400 });
+    return NextResponse.json({ error: "برای این روش پرداخت نباید شبکه جداگانه ارسال شود." }, { status: 400 });
   }
 
   const headers = { apikey: context.key, Authorization: `Bearer ${context.key}`, "Content-Type": "application/json" };
