@@ -50,9 +50,10 @@ export default function Home() {
           setTelegramState("connected");
           if (data.user?.first_name) setTelegramName(data.user.first_name);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           setTelegramState("browser");
-          setNotice("اتصال امن تلگرام هنوز پیکربندی نشده است.");
+          const message = error instanceof Error ? error.message : "خطای ناشناخته در اتصال";
+          setNotice(`خطای ورود تلگرام: ${message}`);
         });
     } else {
       setTelegramState("browser");
