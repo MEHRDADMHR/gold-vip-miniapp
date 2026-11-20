@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
     const response = await supabaseRequest(auth.url, auth.key, `plans?id=eq.${encodeURIComponent(id)}`, "PATCH", {
       title, duration_days: duration, price_minor: price,
-      currency: typeof body.currency === "string" && body.currency.trim() ? body.currency.trim().toUpperCase() : "IRR",
+      currency: "USD",
       is_active: body.is_active !== false,
     }, "return=representation");
     if (!response.ok) return NextResponse.json({ error: "ویرایش پلن ناموفق بود." }, { status: 502 });
