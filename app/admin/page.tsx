@@ -26,6 +26,8 @@ export default function AdminPage() {
   const [planEdits, setPlanEdits] = useState<Record<string, { title: string; duration_days: string; price_minor: string; currency: string; is_active: boolean }>>({});
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({ usdt_bep20_address: "", usdt_solana_address: "", usdt_polygon_address: "", card_number: "", card_holder: "", usdt_enabled: true, card_enabled: true });
   const [paymentLoading, setPaymentLoading] = useState(true);
+  const [paymentOrders, setPaymentOrders] = useState<Row[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -71,6 +73,38 @@ export default function AdminPage() {
       setNotice("تنظیمات پرداخت با موفقیت ذخیره شد.");
       await loadPaymentSettings();
     } catch (e) { setError(e instanceof Error ? e.message : "خطای ذخیره تنظیمات پرداخت"); }
+    finally { setSaving(false); }
+  }
+
+  const loadPaymentOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    try {
+      const response = await fetch("/api/admin/payment-orders", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "دریافت سفارش‌ها ناموفق بود");
+      setPaymentOrders(Array.isArray(body.orders) ? body.orders : []);
+    } catch (e) { setError(e instanceof Error ? e.message : "خطای دریافت سفارش‌ها"); }
+    finally { setOrdersLoading(false); }
+  }, []);
+
+  useEffect(() => { if (result?.role === "admin") void loadPaymentOrders(); }, [result?.role, loadPaymentOrders]);
+
+  async function reviewPaymentOrder(orderId: string, decision: "approved" | "rejected") {
+    const question = decision === "approved"
+      ? "آیا انتقال وجه را بررسی کرده‌ای و از دریافت کامل مبلغ مطمئنی؟ با تأیید، اشتراک کاربر فعال می‌شود."
+      : "این سفارش پرداخت رد شود؟";
+    if (!confirm(question)) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/admin/payment-orders", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId, decision }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "بررسی سفارش ناموفق بود");
+      setNotice(decision === "approved" ? "پرداخت تأیید و اشتراک کاربر فعال شد." : "سفارش پرداخت رد شد.");
+      await Promise.all([loadPaymentOrders(), load()]);
+    } catch (e) { setError(e instanceof Error ? e.message : "خطای بررسی سفارش"); }
     finally { setSaving(false); }
   }
 
@@ -210,6 +244,27 @@ export default function AdminPage() {
           </form>}
         </section>
 
+        {result.role === "admin" && <section className="admin-panel admin-wide">
+          <div className="admin-panel-title"><h2>سفارش‌های پرداخت</h2><button className="admin-action" onClick={() => void loadPaymentOrders()} disabled={ordersLoading}>بروزرسانی سفارش‌ها ↻</button></div>
+          {ordersLoading ? <p className="admin-loading">در حال دریافت سفارش‌ها…</p> : paymentOrders.length === 0 ? <p className="admin-empty">هنوز سفارش پرداختی ثبت نشده است.</p> : <div className="admin-table-wrap"><table>
+            <thead><tr><th>کاربر</th><th>پلن</th><th>مبلغ</th><th>روش</th><th>شناسه تراکنش / رسید</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+            <tbody>{paymentOrders.map(order => {
+              const user = order.users as Row | null;
+              const plan = order.plans as Row | null;
+              const status = String(order.status);
+              return <tr key={String(order.id)}>
+                <td>{String(user?.first_name || user?.username || "کاربر")}<small className="admin-subline">ID: {String(user?.telegram_id || "—")}</small></td>
+                <td>{String(plan?.title || order.plan_id)}<small className="admin-subline">{String(plan?.duration_days || "—")} روز</small></td>
+                <td dir="ltr">${(Number(order.amount_minor || 0) / 100).toFixed(2)} {String(order.currency)}</td>
+                <td>{order.payment_method === "usdt" ? "تتر / " + String(order.network || "") : "کارت‌به‌کارت"}</td>
+                <td className="payment-reference-cell">{String(order.payment_reference)}</td>
+                <td>{status === "pending" ? "در انتظار بررسی" : status === "approved" ? "تأییدشده" : "ردشده"}</td>
+                <td>{status === "pending" ? <><button className="admin-text-action" disabled={saving} onClick={() => void reviewPaymentOrder(String(order.id), "approved")}>تأیید و فعال‌سازی</button><button className="admin-text-action danger" disabled={saving} onClick={() => void reviewPaymentOrder(String(order.id), "rejected")}>رد سفارش</button></> : "—"}</td>
+              </tr>;
+            })}</tbody>
+          </table></div>}
+          <p className="admin-hint">قبل از تأیید، مبلغ واریزی و شناسه تراکنش را در بانک یا شبکه مربوط بررسی کن. تأیید سفارش، اشتراک را فعال می‌کند.</p>
+        </section>}
         <div className="admin-sections">
           {(["users", "subscriptions"] as const).map(key => <section className="admin-panel" key={key}><div className="admin-panel-title"><h2>{labels[key]}</h2><span>{result.data[key].length} رکورد</span></div>
             {result.data[key].length === 0 ? <p className="admin-empty">هنوز موردی ثبت نشده است.</p> : <div className="admin-table-wrap"><table><thead><tr><th>{key === "users" ? "کاربر" : "پلن"}</th><th>{key === "users" ? "شناسه تلگرام" : "وضعیت"}</th>{key === "users" && <th>دسترسی</th>}</tr></thead><tbody>{result.data[key].map(row => <tr key={String(row.id)}><td>{key === "users" ? String(row.first_name || row.username || "کاربر") : String(row.plan_id)}</td><td>{key === "users" ? String(row.telegram_id) : String(row.status)}</td>{key === "users" && <td><button className="admin-text-action" onClick={() => void mutate("POST", { kind: "user", telegram_id: Number(row.telegram_id), is_blocked: row.is_blocked !== true })}>{row.is_blocked ? "رفع مسدودی" : "مسدود کردن"}</button></td>}</tr>)}</tbody></table></div>}
