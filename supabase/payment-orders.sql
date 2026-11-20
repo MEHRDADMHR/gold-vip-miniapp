@@ -5,7 +5,7 @@ create table if not exists public.payment_orders (
   plan_id text not null references public.plans(id),
   amount_minor bigint not null check (amount_minor >= 0),
   currency text not null default 'USD' check (currency = 'USD'),
-  payment_method text not null check (payment_method in ('usdt', 'card')),
+  payment_method text not null check (payment_method in ('usdt', 'bnb', 'sol', 'pol', 'card')),
   network text check (network in ('bep20', 'solana', 'polygon')),
   payment_reference text not null,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
@@ -16,7 +16,7 @@ create table if not exists public.payment_orders (
   updated_at timestamptz not null default now(),
   constraint payment_orders_method_network_check check (
     (payment_method = 'usdt' and network is not null) or
-    (payment_method = 'card' and network is null)
+    (payment_method in ('bnb', 'sol', 'pol', 'card') and network is null)
   )
 );
 
