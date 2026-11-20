@@ -13,12 +13,13 @@ export async function POST(request: NextRequest) {
   if ("error" in auth) return auth.error;
   if (auth.role !== "admin") return NextResponse.json({ error: "فقط مدیر اصلی اجازه آپلود ویدیو دارد." }, { status: 403 });
 
-  let body: { filename?: string; contentType?: string; size?: number };
+  let body: { filename?: string; contentType?: string; size?: number; purpose?: string };
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "درخواست نامعتبر است." }, { status: 400 });
   }
 
   const size = Number(body.size);
+  const purpose = body.purpose === "preview" ? "preview" : "video";
   const filename = typeof body.filename === "string" ? body.filename : "";
   const contentType = typeof body.contentType === "string" ? body.contentType : "application/octet-stream";
   if (!filename || !Number.isSafeInteger(size) || size < 1 || size > R2_MAX_FILE_SIZE) {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     const { client, bucket } = getR2Config();
     const safeName = filename.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-100) || "video";
-    const key = `videos/${randomUUID()}-${safeName}`;
+    const key = `${purpose === "preview" ? "previews" : "videos"}/${randomUUID()}-${safeName}`;
     const created = await client.send(new CreateMultipartUploadCommand({
       Bucket: bucket, Key: key, ContentType: contentType,
     }));
