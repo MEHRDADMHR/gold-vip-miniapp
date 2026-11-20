@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       thumbnail_url: typeof body.thumbnail_url === "string" && body.thumbnail_url.trim() ? body.thumbnail_url.trim() : null,
       storage_key: storageKey,
       preview_storage_key: typeof body.preview_storage_key === "string" && /^previews\/[a-f0-9-]{36}-[a-zA-Z0-9._-]+$/.test(body.preview_storage_key) ? body.preview_storage_key : null,
-      preview_seconds: Math.max(0, Math.min(300, Number(body.preview_seconds) || 15)),
+      preview_seconds: 15,
       is_published: body.is_published === true,
     };
     const response = await supabaseRequest(auth.url, auth.key, "videos", "POST", payload, "return=representation");
