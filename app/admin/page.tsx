@@ -131,7 +131,7 @@ export default function AdminPage() {
       {result && <>
         <div className="admin-stats">{counts.map(([key, count]) => <article key={key}><span>{labels[key]}</span><strong>{count.toLocaleString("fa-IR")}</strong><small>رکوردهای دریافت‌شده</small></article>)}</div>
         <section className="admin-panel admin-wide">
-          <div className="admin-panel-title"><h2>مدیریت ویدیوها</h2><button className="admin-action" onClick={() => { setVideo(emptyVideo); setVideoFile(null); setUploadProgress(0); setShowVideoForm(!showVideoForm); }}>+ افزودن ویدیو</button></div>
+          <div className="admin-panel-title"><h2>مدیریت ویدیوها</h2><button className="admin-action" onClick={() => { setVideo(emptyVideo); setVideoFile(null); setPreviewFile(null); setUploadProgress(0); setShowVideoForm(!showVideoForm); }}>+ افزودن ویدیو</button></div>
           {showVideoForm && <form className="admin-form" onSubmit={saveVideo}>
             <label>عنوان ویدیو<input required value={video.title} onChange={e => setVideo({ ...video, title: e.target.value })}/></label>
             <label>انتخاب فایل ویدیو (حداکثر ۵۰۰ مگابایت)<input type="file" accept="video/*" onChange={e => { const file = e.target.files?.[0] || null; if (file && file.size > 500 * 1024 * 1024) { setError("حجم فایل نباید بیشتر از ۵۰۰ مگابایت باشد."); e.target.value = ""; setVideoFile(null); return; } setError(""); setVideoFile(file); }}/></label>
