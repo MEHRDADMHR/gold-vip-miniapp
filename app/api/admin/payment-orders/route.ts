@@ -20,7 +20,7 @@ export async function GET() {
       detail = [data.message, data.details, data.hint, data.code].filter(Boolean).join(" | ") || raw;
     } catch {}
     return NextResponse.json(
-      { error: "دریافت سفارش‌های پرداخت ناموفق بود.", detail },
+      { error: `دریافت سفارش‌های پرداخت ناموفق بود: ${detail}` },
       { status: 502 },
     );
   }
