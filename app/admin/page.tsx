@@ -7,8 +7,8 @@ type DashboardData = {
   role: string;
   data: { users: Row[]; videos: Row[]; plans: Row[]; subscriptions: Row[] };
 };
-type VideoForm = { id?: string; title: string; description: string; thumbnail_url: string; storage_key: string; preview_seconds: string; is_published: boolean };
-const emptyVideo: VideoForm = { title: "", description: "", thumbnail_url: "", storage_key: "", preview_seconds: "30", is_published: false };
+type VideoForm = { id?: string; title: string; description: string; thumbnail_url: string; storage_key: string; preview_storage_key: string; preview_seconds: string; is_published: boolean };
+const emptyVideo: VideoForm = { title: "", description: "", thumbnail_url: "", storage_key: "", preview_storage_key: "", preview_seconds: "15", is_published: false };
 const labels: Record<string, string> = { users: "کاربران", videos: "ویدیوها", plans: "پلن‌ها", subscriptions: "اشتراک‌ها" };
 
 export default function AdminPage() {
@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [showVideoForm, setShowVideoForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [planEdits, setPlanEdits] = useState<Record<string, { title: string; duration_days: string; price_minor: string; currency: string; is_active: boolean }>>({});
 
@@ -58,11 +59,11 @@ export default function AdminPage() {
     finally { setSaving(false); }
   }
 
-  async function uploadVideoFile(file: File) {
+  async function uploadVideoFile(file: File, purpose: "video" | "preview" = "video") {
     const initResponse = await fetch("/api/admin/videos/upload/initiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
+      body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size, purpose }),
     });
     const init = await initResponse.json();
     if (!initResponse.ok) throw new Error(init.error || "شروع آپلود ناموفق بود");
@@ -94,10 +95,12 @@ export default function AdminPage() {
     setSaving(true); setError(""); setNotice(""); setUploadProgress(0);
     try {
       let storage_key = video.storage_key;
-      if (videoFile) storage_key = await uploadVideoFile(videoFile);
+      let preview_storage_key = video.preview_storage_key;
+      if (videoFile) storage_key = await uploadVideoFile(videoFile, "video");
+      if (previewFile) preview_storage_key = await uploadVideoFile(previewFile, "preview");
       if (!storage_key) throw new Error("ابتدا فایل ویدیویی را انتخاب کن.");
-      const ok = await mutate(video.id ? "PATCH" : "POST", { kind: "video", ...video, storage_key, preview_seconds: Number(video.preview_seconds) });
-      if (ok) { setVideo(emptyVideo); setVideoFile(null); setShowVideoForm(false); setUploadProgress(0); }
+      const ok = await mutate(video.id ? "PATCH" : "POST", { kind: "video", ...video, storage_key, preview_storage_key, preview_seconds: 15 });
+      if (ok) { setVideo(emptyVideo); setVideoFile(null); setPreviewFile(null); setShowVideoForm(false); setUploadProgress(0); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "آپلود ویدیو ناموفق بود");
     } finally {
@@ -106,8 +109,8 @@ export default function AdminPage() {
   }
 
   function editVideo(row: Row) {
-    setVideo({ id: String(row.id), title: String(row.title ?? ""), description: String(row.description ?? ""), thumbnail_url: String(row.thumbnail_url ?? ""), storage_key: String(row.storage_key ?? ""), preview_seconds: String(row.preview_seconds ?? 30), is_published: row.is_published === true });
-    setVideoFile(null); setUploadProgress(0);
+    setVideo({ id: String(row.id), title: String(row.title ?? ""), description: String(row.description ?? ""), thumbnail_url: String(row.thumbnail_url ?? ""), storage_key: String(row.storage_key ?? ""), preview_storage_key: String(row.preview_storage_key ?? ""), preview_seconds: "15", is_published: row.is_published === true });
+    setVideoFile(null); setPreviewFile(null); setUploadProgress(0);
     setShowVideoForm(true);
   }
 
@@ -134,9 +137,12 @@ export default function AdminPage() {
             <label>انتخاب فایل ویدیو (حداکثر ۵۰۰ مگابایت)<input type="file" accept="video/*" onChange={e => { const file = e.target.files?.[0] || null; if (file && file.size > 500 * 1024 * 1024) { setError("حجم فایل نباید بیشتر از ۵۰۰ مگابایت باشد."); e.target.value = ""; setVideoFile(null); return; } setError(""); setVideoFile(file); }}/></label>
             {videoFile && <p className="admin-hint">فایل انتخاب‌شده: {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(1)} مگابایت)</p>}
             {saving && videoFile && <p className="admin-hint">در حال آپلود مستقیم به فضای ابری: {uploadProgress}٪</p>}
+            <label>فایل پیش‌نمایش ۱۵ ثانیه‌ای (اختیاری، فقط برای کاربران بدون اشتراک)<input type="file" accept="video/*" onChange={e => { const file = e.target.files?.[0] || null; if (file && file.size > 500 * 1024 * 1024) { setError("حجم فایل پیش‌نمایش نباید بیشتر از ۵۰۰ مگابایت باشد."); e.target.value = ""; setPreviewFile(null); return; } setError(""); setPreviewFile(file); }}/></label>
+            {previewFile && <p className="admin-hint">پیش‌نمایش انتخاب‌شده: {previewFile.name}. لطفاً قبل از آپلود، آن را به ۱۵ ثانیه اول برش بده.</p>}
+            {video.preview_storage_key && !previewFile && <p className="admin-hint">برای این ویدیو فایل پیش‌نمایش ثبت شده است.</p>}
             <label>آدرس تصویر کاور<input value={video.thumbnail_url} onChange={e => setVideo({ ...video, thumbnail_url: e.target.value })}/></label>
             <label>توضیحات<textarea value={video.description} onChange={e => setVideo({ ...video, description: e.target.value })}/></label>
-            <label>مدت پیش‌نمایش (ثانیه)<input type="number" min="0" max="300" value={video.preview_seconds} onChange={e => setVideo({ ...video, preview_seconds: e.target.value })}/></label>
+            <p className="admin-hint">مدت پیش‌نمایش برای همه کاربران بدون اشتراک ثابت و برابر ۱۵ ثانیه است.</p>
             <label className="admin-check"><input type="checkbox" checked={video.is_published} onChange={e => setVideo({ ...video, is_published: e.target.checked })}/> انتشار و نمایش ویدیو</label>
             <div className="admin-form-actions"><button disabled={saving}>{saving ? "در حال ذخیره…" : "ذخیره ویدیو"}</button><button type="button" onClick={() => setShowVideoForm(false)}>انصراف</button></div>
           </form>}
