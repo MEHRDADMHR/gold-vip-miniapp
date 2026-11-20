@@ -7,7 +7,7 @@ type DashboardData = {
   role: string;
   data: { users: Row[]; videos: Row[]; plans: Row[]; subscriptions: Row[] };
 };
-type PaymentSettings = { usdt_bep20_address: string; usdt_solana_address: string; usdt_polygon_address: string; card_number: string; card_holder: string; usdt_enabled: boolean; card_enabled: boolean };
+type PaymentSettings = { usdt_bep20_address: string; usdt_solana_address: string; usdt_polygon_address: string; bnb_address: string; sol_address: string; pol_address: string; card_number: string; card_holder: string; usdt_enabled: boolean; bnb_enabled: boolean; sol_enabled: boolean; pol_enabled: boolean; card_enabled: boolean };
 type VideoForm = { id?: string; title: string; description: string; thumbnail_url: string; storage_key: string; preview_storage_key: string; preview_seconds: string; is_published: boolean };
 const emptyVideo: VideoForm = { title: "", description: "", thumbnail_url: "", storage_key: "", preview_storage_key: "", preview_seconds: "15", is_published: false };
 const labels: Record<string, string> = { users: "کاربران", videos: "ویدیوها", plans: "پلن‌ها", subscriptions: "اشتراک‌ها" };
@@ -24,7 +24,7 @@ export default function AdminPage() {
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [planEdits, setPlanEdits] = useState<Record<string, { title: string; duration_days: string; price_minor: string; currency: string; is_active: boolean }>>({});
-  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({ usdt_bep20_address: "", usdt_solana_address: "", usdt_polygon_address: "", card_number: "", card_holder: "", usdt_enabled: true, card_enabled: true });
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({ usdt_bep20_address: "", usdt_solana_address: "", usdt_polygon_address: "", bnb_address: "", sol_address: "", pol_address: "", card_number: "", card_holder: "", usdt_enabled: true, bnb_enabled: false, sol_enabled: false, pol_enabled: false, card_enabled: true });
   const [paymentLoading, setPaymentLoading] = useState(true);
   const [paymentOrders, setPaymentOrders] = useState<Row[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -236,6 +236,14 @@ export default function AdminPage() {
             <label>آدرس عمومی کیف پول تتر روی شبکه Solana<input dir="ltr" autoComplete="off" placeholder="آدرس سولانا" value={paymentSettings.usdt_solana_address} onChange={e => setPaymentSettings(old => ({ ...old, usdt_solana_address: e.target.value }))}/></label>
             <label>آدرس عمومی کیف پول تتر روی شبکه Polygon<input dir="ltr" autoComplete="off" placeholder="0x..." value={paymentSettings.usdt_polygon_address} onChange={e => setPaymentSettings(old => ({ ...old, usdt_polygon_address: e.target.value }))}/></label>
 
+            <h3>پرداخت با توکن اصلی شبکه‌ها</h3>
+            <label className="admin-check"><input type="checkbox" checked={paymentSettings.bnb_enabled} onChange={e => setPaymentSettings(old => ({ ...old, bnb_enabled: e.target.checked }))}/> فعال بودن پرداخت BNB</label>
+            <label>آدرس کیف پول BNB روی BNB Smart Chain<input dir="ltr" autoComplete="off" placeholder="0x..." value={paymentSettings.bnb_address} onChange={e => setPaymentSettings(old => ({ ...old, bnb_address: e.target.value }))}/></label>
+            <label className="admin-check"><input type="checkbox" checked={paymentSettings.sol_enabled} onChange={e => setPaymentSettings(old => ({ ...old, sol_enabled: e.target.checked }))}/> فعال بودن پرداخت SOL</label>
+            <label>آدرس کیف پول SOL روی Solana<input dir="ltr" autoComplete="off" placeholder="آدرس سولانا" value={paymentSettings.sol_address} onChange={e => setPaymentSettings(old => ({ ...old, sol_address: e.target.value }))}/></label>
+            <label className="admin-check"><input type="checkbox" checked={paymentSettings.pol_enabled} onChange={e => setPaymentSettings(old => ({ ...old, pol_enabled: e.target.checked }))}/> فعال بودن پرداخت POL</label>
+            <label>آدرس کیف پول POL روی Polygon<input dir="ltr" autoComplete="off" placeholder="0x..." value={paymentSettings.pol_address} onChange={e => setPaymentSettings(old => ({ ...old, pol_address: e.target.value }))}/></label>
+
             <h3>کارت‌به‌کارت</h3>
             <label className="admin-check"><input type="checkbox" checked={paymentSettings.card_enabled} onChange={e => setPaymentSettings(old => ({ ...old, card_enabled: e.target.checked }))}/> فعال بودن کارت‌به‌کارت</label>
             <label>شماره کارت ۱۶ رقمی<input dir="ltr" inputMode="numeric" maxLength={19} placeholder="0000 0000 0000 0000" value={paymentSettings.card_number} onChange={e => setPaymentSettings(old => ({ ...old, card_number: e.target.value }))}/></label>
@@ -256,7 +264,7 @@ export default function AdminPage() {
                 <td>{String(user?.first_name || user?.username || "کاربر")}<small className="admin-subline">ID: {String(user?.telegram_id || "—")}</small></td>
                 <td>{String(plan?.title || order.plan_id)}<small className="admin-subline">{String(plan?.duration_days || "—")} روز</small></td>
                 <td dir="ltr">${(Number(order.amount_minor || 0) / 100).toFixed(2)} {String(order.currency)}</td>
-                <td>{order.payment_method === "usdt" ? "تتر / " + String(order.network || "") : "کارت‌به‌کارت"}</td>
+                <td>{order.payment_method === "usdt" ? "تتر / " + String(order.network || "") : order.payment_method === "card" ? "کارت‌به‌کارت" : String(order.payment_method).toUpperCase()}</td>
                 <td className="payment-reference-cell">{String(order.payment_reference)}</td>
                 <td>{status === "pending" ? "در انتظار بررسی" : status === "approved" ? "تأییدشده" : "ردشده"}</td>
                 <td>{status === "pending" ? <><button className="admin-text-action" disabled={saving} onClick={() => void reviewPaymentOrder(String(order.id), "approved")}>تأیید و فعال‌سازی</button><button className="admin-text-action danger" disabled={saving} onClick={() => void reviewPaymentOrder(String(order.id), "rejected")}>رد سفارش</button></> : "—"}</td>
