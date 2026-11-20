@@ -12,7 +12,18 @@ export async function GET() {
     `${auth.url}/rest/v1/payment_orders?select=id,user_id,plan_id,amount_minor,currency,payment_method,network,payment_reference,status,created_at,users(first_name,telegram_id,username),plans(title,duration_days)&order=created_at.desc&limit=100`,
     { headers: { apikey: auth.key, Authorization: `Bearer ${auth.key}` }, cache: "no-store" },
   );
-  if (!response.ok) return NextResponse.json({ error: "دریافت سفارش‌های پرداخت ناموفق بود." }, { status: 502 });
+  if (!response.ok) {
+    const raw = await response.text();
+    let detail = raw;
+    try {
+      const data = JSON.parse(raw);
+      detail = [data.message, data.details, data.hint, data.code].filter(Boolean).join(" | ") || raw;
+    } catch {}
+    return NextResponse.json(
+      { error: "دریافت سفارش‌های پرداخت ناموفق بود.", detail },
+      { status: 502 },
+    );
+  }
   return NextResponse.json({ orders: await response.json() });
 }
 
