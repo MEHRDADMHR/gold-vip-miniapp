@@ -9,7 +9,7 @@ export async function GET() {
   if (auth.role !== "admin") return NextResponse.json({ error: "فقط مدیر اصلی می‌تواند سفارش‌های پرداخت را بررسی کند." }, { status: 403 });
 
   const response = await fetch(
-    `${auth.url}/rest/v1/payment_orders?select=id,user_id,plan_id,amount_minor,currency,payment_method,network,payment_reference,status,created_at,users(first_name,telegram_id,username),plans(title,duration_days)&order=created_at.desc&limit=100`,
+    `${auth.url}/rest/v1/payment_orders?select=id,user_id,plan_id,amount_minor,currency,payment_method,network,payment_reference,status,created_at,users!payment_orders_user_id_fkey(first_name,telegram_id,username),plans(title,duration_days)&order=created_at.desc&limit=100`,
     { headers: { apikey: auth.key, Authorization: `Bearer ${auth.key}` }, cache: "no-store" },
   );
   if (!response.ok) {
