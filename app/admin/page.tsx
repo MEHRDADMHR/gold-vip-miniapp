@@ -37,7 +37,7 @@ export default function AdminPage() {
       const edits: typeof planEdits = {};
       for (const p of body.data.plans as Row[]) {
         const id = String(p.id);
-        edits[id] = { title: String(p.title ?? ""), duration_days: String(p.duration_days ?? 30), price_minor: String(p.price_minor ?? 0), currency: String(p.currency ?? "IRR"), is_active: p.is_active !== false };
+        edits[id] = { title: String(p.title ?? ""), duration_days: String(p.duration_days ?? 30), price_minor: (Number(p.price_minor ?? 0) / 100).toFixed(2), currency: "USD", is_active: p.is_active !== false };
       }
       setPlanEdits(edits);
     } catch (e) { setError(e instanceof Error ? e.message : "خطای نامشخص"); }
@@ -148,7 +148,9 @@ export default function AdminPage() {
   async function savePlan(id: string) {
     const p = planEdits[id];
     if (!p) return;
-    await mutate("POST", { kind: "plan", id, ...p, duration_days: Number(p.duration_days), price_minor: Number(p.price_minor) });
+    const dollars = Number(p.price_minor);
+    if (!Number.isFinite(dollars) || dollars < 0 || !Number.isSafeInteger(Math.round(dollars * 100))) { setError("قیمت دلاری معتبر نیست."); return; }
+    await mutate("POST", { kind: "plan", id, ...p, currency: "USD", duration_days: Number(p.duration_days), price_minor: Math.round(dollars * 100) });
   }
 
   const counts = result ? (["users", "videos", "plans", "subscriptions"] as const).map(key => [key, result.data[key].length] as const) : [];
@@ -182,10 +184,10 @@ export default function AdminPage() {
         </section>
 
         <section className="admin-panel admin-wide">
-          <div className="admin-panel-title"><h2>تنظیم پلن‌های اشتراک</h2><span>قیمت‌ها به کوچک‌ترین واحد ارز وارد شوند.</span></div>
-          <div className="admin-table-wrap"><table><thead><tr><th>شناسه</th><th>عنوان</th><th>روز</th><th>قیمت</th><th>ارز</th><th>فعال</th><th></th></tr></thead><tbody>{result.data.plans.map(row => {
+          <div className="admin-panel-title"><h2>تنظیم پلن‌های اشتراک</h2><span>قیمت‌ها را به دلار وارد کن؛ مثلاً 9.10 یعنی ۹ دلار و ۱۰ سنت.</span></div>
+          <div className="admin-table-wrap"><table><thead><tr><th>شناسه</th><th>عنوان</th><th>روز</th><th>قیمت (دلار)</th><th>ارز</th><th>فعال</th><th></th></tr></thead><tbody>{result.data.plans.map(row => {
             const id = String(row.id); const p = planEdits[id]; if (!p) return null;
-            return <tr key={id}><td>{id}</td><td><input value={p.title} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, title: e.target.value } }))}/></td><td><input type="number" min="1" value={p.duration_days} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, duration_days: e.target.value } }))}/></td><td><input type="number" min="0" value={p.price_minor} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, price_minor: e.target.value } }))}/></td><td><input value={p.currency} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, currency: e.target.value } }))}/></td><td><input type="checkbox" checked={p.is_active} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, is_active: e.target.checked } }))}/></td><td><button className="admin-text-action" onClick={() => void savePlan(id)} disabled={saving}>ذخیره</button></td></tr>;
+            return <tr key={id}><td>{id}</td><td><input value={p.title} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, title: e.target.value } }))}/></td><td><input type="number" min="1" value={p.duration_days} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, duration_days: e.target.value } }))}/></td><td><input type="number" min="0" step="0.01" value={p.price_minor} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, price_minor: e.target.value, currency: "USD" } }))}/></td><td>USD ($)</td><td><input type="checkbox" checked={p.is_active} onChange={e => setPlanEdits(old => ({ ...old, [id]: { ...p, is_active: e.target.checked } }))}/></td><td><button className="admin-text-action" onClick={() => void savePlan(id)} disabled={saving}>ذخیره</button></td></tr>;
           })}</tbody></table></div>
         </section>
 
